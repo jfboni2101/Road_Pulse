@@ -1,0 +1,9 @@
+{% extends 'main.html' %}
+
+{% block content %}
+
+    {% for el in lista %}
+    {{el.id}}  {{el.value}}  {{el.timestamp}} <BR>
+  {% endfor %}
+
+{% endblock %}
