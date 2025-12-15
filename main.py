@@ -77,9 +77,9 @@ def printList():
 def upload_data():
     raw = request.get_data(as_text=True)
     print("Ricevuto:", raw)
-    return "OK", 200
+    # return "OK", 200
 
-    """
+
     try:
         # Parsing tipo lat=44&long=10&dati=0,0
         params = parse_qs(raw)
@@ -88,10 +88,14 @@ def upload_data():
         lon = float(params.get("long", [0])[0])
         dati = params.get("dati", ["0,0"])[0]
 
-        if lat in (None, '') or lon in (None, '') or dati in (None, ''):
-            return "Dati incompleti, niente aggiunto al DB", 401
+        if lat == 0 or lon == 0 or dati == 0:
+            return "Dati incompleti, niente aggiunto al DB", 400
 
-        piezo_str, mpu_str = dati.split(",")
+        try:
+            piezo_str, mpu_str = dati.split(",")
+        except ValueError:
+            return "Formato dati errato", 400
+
         piezo = float(piezo_str)
         mpu = float(mpu_str)
 
@@ -108,7 +112,7 @@ def upload_data():
     except Exception as e:
         print("Errore parsing dati: ", e)
         return f"Errore parsing dati: {e}", 400
-    """
+
 @app.route('/api/roadpoints', methods=['GET'])
 def get_road_points():
     # 1. Interroga il database per tutti i punti registrati
@@ -129,15 +133,17 @@ def get_road_points():
     # 3. Restituisci la lista come risposta JSON
     return jsonify(points_list)
 
-# @app.route('/addToList/<val>', methods=['POST'])
-# def addToList(val):
-    # myset.append(name)
-    # return str(len(myset))
+"""
+@app.route('/addToList/<val>', methods=['POST'])
+def addToList(val):
+    myset.append(name)
+    return str(len(myset))
 
-    # sf = Sensorfeed(val)
-    # db.session.add(sf)
-    # db.session.commit()
-    # return str(sf.id)
+    sf = Sensorfeed(val)
+    db.session.add(sf)
+    db.session.commit()
+    return str(sf.id)
+"""
 
 @app.route('/deleteAll', methods=['POST'])
 def deleteAll():
