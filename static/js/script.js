@@ -37,12 +37,37 @@ function locateUser() {
 // Chiamata alla funzione di geolocalizzazione
 locateUser();
 
+
 // Caricamento strade Reggio Emilia
-fetch('https://geoserver.comune.re.it/geoserver/geo_re/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geo_re:SIT_ARCHISTRADE&outputFormat=application/json')
-  .then(response => response.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: { color: 'green', weight: 3 }
-    }).addTo(map);
-  })
-  .catch(err => console.error('Errore caricamento strade:', err));
+// fetch('https://geoserver.comune.re.it/geoserver/geo_re/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geo_re:SIT_ARCHISTRADE&outputFormat=application/json')
+  // .then(response => response.json())
+  // .then(data => {
+    // L.geoJSON(data, {
+      // style: { color: 'green', weight: 3 }
+    // }).addTo(map);
+  // })
+  // .catch(err => console.error('Errore caricamento strade:', err));
+
+
+// caricamento dati DB
+function update_road_points() {
+    fetch('/api/roadpoints')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(point => {
+                let markerColor = point.status === "rossa" ? 'red' : 'orange';
+                let marker = L.circleMarker([point.lat, point.lon], {
+                    radius: 3,
+                    color: markerColor,
+                    fillColor: markerColor,
+                    fillOpacity: 0.7
+                }).addTo(map);
+                marker.bindPopup(`Stato strada: ${point.status}<br>Timestamp: ${point.timestamp}`)
+            })
+        })
+        .catch(err => console.error('Errore caricamento punti dal DB:', err));
+}
+
+update_road_points();
+
+setInterval(update_road_points, 600000);

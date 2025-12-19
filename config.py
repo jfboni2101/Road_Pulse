@@ -13,7 +13,7 @@ class Config:
 
     FLASK_APP = 'app.py'
     FLASK_RUN_HOST = '0.0.0.0'
-    FLASK_RUN_PORT = 211
+    FLASK_RUN_PORT = 2101
 
     FLASK_DEBUG = 1
     FLASK_ENV = "development" #production
@@ -25,7 +25,7 @@ class Config:
     SESSION_TYPE = 'sqlalchemy' #'redis'
     SESSION_SQLALCHEMY_TABLE = 'sessions'
     SESSION_COOKIE_NAME = 'my_cookieGetFace'
-    SESSION_PERMANENT = True
+    SESSION_PERMANENT = False
 
     # Database
 
