@@ -10,6 +10,7 @@ from flask_openapi3 import Info
 from flask_openapi3 import OpenAPI
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 # Caratteristiche programma
@@ -19,6 +20,7 @@ app = OpenAPI(appname, info=info)
 myconfig = Config
 app.config.from_object(myconfig)
 app.secret_key = "passwordDiProvaPerVedereSeFunzionaTutto"
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 
 # Creazione DB
@@ -179,11 +181,11 @@ def upload_data():
 @app.route('/api/roadpoints', methods=['GET'])
 @login_required
 def get_road_points():
-    # 1. Interroga il database per tutti i punti registrati
+    # Interroga il database per tutti i punti registrati
     # Ordiniamo per ID in modo che i più recenti siano in cima (opzionale)
     all_points = db.session.execute(db.select(Sensorfeed)).scalars().all()
 
-    # 2. Formatta i dati in una lista di dizionari JSON
+    # Formatta i dati in una lista di dizionari JSON
     points_list = []
     for point in all_points:
         points_list.append({
@@ -194,7 +196,7 @@ def get_road_points():
             'timestamp': point.timestamp.isoformat()
         })
 
-    # 3. Restituisci la lista come risposta JSON
+    # Restituisci la lista come risposta JSON
     return jsonify(points_list)
 
 
@@ -211,6 +213,7 @@ def add_to_list(val):
 """
 
 
+# Effettuiamo il logout dalla pagina
 @app.route('/logout')
 def logout():
     session.clear()
@@ -248,5 +251,5 @@ if __name__ == '__main__':
                 db.session.commit()
                 print(f"Utente {u.username} creato con ID {u.id}")
 
-    app.run(host=app.config.get('FLASK_RUN_HOST', '0.0.0.0'),
+    app.run(host=app.config.get('FLASK_RUN_HOST', '127.0.0.1'),
             port=app.config.get('FLASK_RUN_PORT', 2101))

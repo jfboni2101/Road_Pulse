@@ -12,7 +12,7 @@ class Config:
     APPLICATION_ROOT = '/'
 
     FLASK_APP = 'app.py'
-    FLASK_RUN_HOST = '0.0.0.0'
+    FLASK_RUN_HOST = '127.0.0.1'
     FLASK_RUN_PORT = 2101
 
     FLASK_DEBUG = 1

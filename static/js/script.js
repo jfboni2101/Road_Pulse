@@ -49,21 +49,30 @@ locateUser();
   // .catch(err => console.error('Errore caricamento strade:', err));
 
 
+var roadLayer = L.layerGroup().addTo(map);
+
+
 // caricamento dati DB
 function update_road_points() {
     fetch('/api/roadpoints')
         .then(response => response.json())
         .then(data => {
+            roadLayer.clearLayers(); // rimuove i marker precedenti
             data.forEach(point => {
-                let markerColor = point.status === "rossa" ? 'red' : 'orange';
+                let color;
+                switch(point.status) {
+                    case "rossa": color = 'red'; break;
+                    case "gialla": color = 'orange'; break;
+                    default: color = 'green';
+                }
                 let marker = L.circleMarker([point.lat, point.lon], {
-                    radius: 3,
-                    color: markerColor,
-                    fillColor: markerColor,
+                    radius: 5,
+                    color: color,
+                    fillColor: color,
                     fillOpacity: 0.7
-                }).addTo(map);
-                marker.bindPopup(`Stato strada: ${point.status}<br>Timestamp: ${point.timestamp}`)
-            })
+                }).addTo(roadLayer);
+                marker.bindPopup(`Stato strada: ${point.status}<br>Timestamp: ${new Date(point.timestamp).toLocaleString()}`);
+            });
         })
         .catch(err => console.error('Errore caricamento punti dal DB:', err));
 }
