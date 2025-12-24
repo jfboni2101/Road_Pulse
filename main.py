@@ -21,6 +21,8 @@ myconfig = Config
 app.config.from_object(myconfig)
 app.secret_key = "passwordDiProvaPerVedereSeFunzionaTutto"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+UPLOAD_SECRET = app.config["UPLOAD_SECRET"]
+DELETE_SECRET = app.config["DELETE_SECRET"]
 
 
 # Creazione DB
@@ -63,9 +65,9 @@ def calculate_road_status(vib_val, az_val, az_baseline=10.0):
     delta_az = abs(az_val - az_baseline)
 
     # Soglie delta
-    piezo_high = 60
-    piezo_medium = 30
-    mpu_high = 3   # delta sopra 3 considerato grave
+    piezo_high = 60.0
+    piezo_medium = 30.0
+    mpu_high = 3.0
     mpu_medium = 1.5
 
     if vib_val > piezo_high and delta_az > mpu_high:
@@ -134,12 +136,24 @@ def upload_data():
         # Parsing tipo lat=44&long=10&dati=0,0
         params = parse_qs(raw)
 
-        lat = float(params.get("lat", [0])[0])
-        lon = float(params.get("long", [0])[0])
-        dati = params.get("dati", ["0,0"])[0]
+        api_key = request.headers.get('X-API-KEY')
+        if api_key != UPLOAD_SECRET:
+            return "Accesso negato", 403
 
-        if lat == 0 or lon == 0 or dati == 0:
+        # Recuperiamo i parametri. Usiamo una lista vuota [] come default invece di None.
+        lat_list = params.get("lat", [])
+        lon_list = params.get("long", [])
+        dati_list = params.get("dati", [])
+
+        if not (lat_list and lon_list and dati_list):
             return "Dati incompleti, niente aggiunto al DB", 400
+
+        lat = float(lat_list[0])
+        lon = float(lon_list[0])
+        dati = dati_list[0]
+
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            return "Coordinate non valide", 400
 
         try:
             piezo_str, mpu_str = dati.split(",")
@@ -200,19 +214,6 @@ def get_road_points():
     return jsonify(points_list)
 
 
-"""
-@app.route('/add-to-list/<val>', methods=['POST'])
-def add_to_list(val):
-    myset.append(name)
-    return str(len(myset))
-
-    sf = Sensorfeed(val)
-    db.session.add(sf)
-    db.session.commit()
-    return str(sf.id)
-"""
-
-
 # Effettuiamo il logout dalla pagina
 @app.route('/logout')
 def logout():
@@ -223,10 +224,16 @@ def logout():
 # Cancellazione punti del DB
 @app.route('/delete-all', methods=['POST'])
 def delete_all():
+
+    api_key = request.headers.get('X-API-KEY')
+    if api_key != UPLOAD_SECRET:
+        return "Accesso negato", 403
+
     Sensorfeed.query.delete()
     db.session.commit()
 
-    db.session.execute(text("DELETE FROM sqlite_sequence WHERE name='sensorfeed';"))
+    db.session.execute(text("DELETE FROM sqlite_sequence "
+                            "WHERE name='sensorfeed';"))
     db.session.commit()
 
     return "Deleted", 200
