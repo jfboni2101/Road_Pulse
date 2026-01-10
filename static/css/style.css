@@ -1,3 +1,4 @@
+/* Layout Generale */
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -10,10 +11,35 @@ h1 {
   margin-top: 10px;
 }
 
+/* Mappa: l'abbiamo resa Full Width per un look più moderno */
 #map {
-  height: 85vh;
-  width: 90%;
-  margin: 10px auto;
-  border: 2px solid #333;
-  border-radius: 10px;
+  height: calc(100vh - 70px); /* Altezza dinamica: tutta la pagina meno la navbar */
+  width: 100%;
+  margin: 0;
+  border: none; /* Rimosso il bordo per un effetto "edge-to-edge" */
+}
+
+/* --- ANIMAZIONI LOGO E NAVBAR --- */
+
+/* Transizione per Logo e Link */
+.navbar-brand img,
+.navbar-nav .nav-link {
+    transition: transform 0.3s ease, color 0.3s ease;
+    display: inline-block;
+}
+
+/* Effetto Zoom al passaggio del mouse (Logo e Link) */
+.navbar-brand:hover img,
+.navbar-nav .nav-link:hover {
+    transform: scale(1.1); /* Zoom del 10% */
+}
+
+/* Effetto Ombra solo sul Logo */
+.navbar-brand img {
+    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Colore specifico per il Logout quando ci passi sopra */
+.nav-link[href="/logout"]:hover {
+    color: #ff4d4d !important; /* Rosso */
 }

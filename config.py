@@ -35,5 +35,10 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     CACHE_TYPE = "simple"  # Flask-Caching related configs
-    CACHE_DEFAULT_TIMEOUT =  100
+    CACHE_DEFAULT_TIMEOUT = 100
+
+    UPLOAD_SECRET = "YouCantSeeMee"
+    DELETE_SECRET = "DontDeleteMe"
+
+
 
