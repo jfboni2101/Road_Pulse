@@ -77,6 +77,19 @@ function update_road_points() {
         .catch(err => console.error('Errore caricamento punti dal DB:', err));
 }
 
+function update_stats() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(stats => {
+            // Inserisce i valori dal JSON agli elementi HTML
+            document.getElementById('total-points').innerText = stats.total_points;
+            document.getElementById('red-count').innerText = stats.red_count;
+            document.getElementById('km-mapped').innerText = stats.estimated_km + " km";
+        })
+        .catch(err => console.error('Errore caricamento statistiche:', err));
+}
+
 update_road_points();
+update_stats();
 
 setInterval(update_road_points, 600000);
