@@ -43,3 +43,20 @@ h1 {
 .nav-link[href="/logout"]:hover {
     color: #ff4d4d !important; /* Rosso */
 }
+
+/* Integrazione per la barra statistiche sopra la mappa */
+.stats-container {
+  background-color: #ffffff;
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+.stat-box h6 {
+  font-size: 0.7rem;
+  color: #777;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.stat-box span {
+  font-size: 1.2rem;
+  font-weight: bold;
+}

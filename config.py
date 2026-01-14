@@ -16,13 +16,13 @@ class Config:
     FLASK_RUN_PORT = 2101
 
     FLASK_DEBUG = 1
-    FLASK_ENV = "development" #production
-    #FLASK_ENV = "production"  # production
+    FLASK_ENV = "development" # production
+    # FLASK_ENV = "production"  # production
 
     DEBUG = True
-    TESTING = False #True
+    TESTING = False
 
-    SESSION_TYPE = 'sqlalchemy' #'redis'
+    SESSION_TYPE = 'sqlalchemy'
     SESSION_SQLALCHEMY_TABLE = 'sessions'
     SESSION_COOKIE_NAME = 'my_cookieGetFace'
     SESSION_PERMANENT = False

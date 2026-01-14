@@ -85,10 +85,17 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 # Find existing point within specified radius
 def find_nearby_point(lat, lon, radius_meters=20):
-    # Search for an existing point within X meters of the given coordinates
-    all_points = Sensorfeed.query.all()
+    # 1 grado lat ≈ 111km, 1 grado lon ≈ 111km*cos(lat)
+    # radius_meters = 20m = 0.00018 gradi circa
+    delta_deg = radius_meters / 111000.0 * 1.5  # Safety margin
 
-    for point in all_points:
+    # Query solo punti nel bounding box (MOLTO più veloce)
+    nearby_candidates = Sensorfeed.query.filter(
+        Sensorfeed.latitude.between(lat - delta_deg, lat + delta_deg),
+        Sensorfeed.longitude.between(lon - delta_deg, lon + delta_deg)
+    ).all()
+
+    for point in nearby_candidates:
         distance = haversine_distance(lat, lon, point.latitude, point.longitude)
         if distance <= radius_meters:
             return point
@@ -97,18 +104,27 @@ def find_nearby_point(lat, lon, radius_meters=20):
 
 
 # State of the road calculation
-def calculate_road_status(vib_val, az_val, az_baseline=10.0):
-    delta_az = abs(az_val - az_baseline)
+def calculate_road_status(piezo_raw, x, y, z, baseline=1.0):
+
+    # 1. Calcolo del Modulo (Indipendenza dalla piega)
+    # Usiamo x e y per ignorare accelerazione/frenata, o tutti e tre per precisione totale
+    modulo = sqrt(x ** 2 + y ** 2)
+
+    # 2. Calcolo del Delta (Urto)
+    mpu_delta = abs(modulo - baseline) * 100.0
+
+    # 3. Soglie (Ora puoi cambiarle qui senza ricaricare il codice su Arduino!)
+    piezo_val = (piezo_raw / 1023.0) * 100.0  # Normalizzazione piezo
 
     # Soglie delta
-    piezo_high = 60.0
-    piezo_medium = 30.0
-    mpu_high = 3.0
-    mpu_medium = 1.5
+    piezo_high = 65.0
+    piezo_medium = 35.0
+    mpu_high = 70.0
+    mpu_medium = 45.0
 
-    if vib_val > piezo_high and delta_az > mpu_high:
+    if piezo_val > piezo_high or mpu_delta > mpu_high:
         return "rossa"
-    elif vib_val > piezo_medium and delta_az > mpu_medium:
+    elif piezo_val > piezo_medium or mpu_delta > mpu_medium:
         return "gialla"
     else:
         return "verde"
@@ -123,6 +139,7 @@ def get_confidence(count):
     else:
         return "Bassa"
 
+
 # Login required in order to do everything
 def login_required(f):
     @wraps(f)
@@ -131,6 +148,7 @@ def login_required(f):
             return redirect('/login')
         return f(*args, **kwargs)
     return wrapper
+
 
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
@@ -149,6 +167,7 @@ def login():
             return render_template('login.html', error="Credenziali errate")
 
     return render_template('login.html')
+
 
 # Homepage
 @app.route('/')
@@ -190,34 +209,45 @@ def upload_data():
             return "Coordinate non valide", 400
 
         try:
-            piezo_str, mpu_str = dati.split(",")
+            piezo_str, ax_str, ay_str, az_str = dati.split(",")
+            piezo = float(piezo_str)
+            ax_raw = float(ax_str)
+            ay_raw = float(ay_str)
+            az_raw = float(az_str)
         except ValueError:
             return "Formato dati errato", 400
 
-        piezo = float(piezo_str)
-        mpu = float(mpu_str)
+        # 1. Conversione in G (come facevamo su Arduino)
+        x_g = ax_raw / 16384.0
+        y_g = ay_raw / 16384.0
+        z_g = az_raw / 16384.0
 
         # Calculate color of the point
-        status = calculate_road_status(piezo, mpu)
-        logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, "
-                     f"piezo={piezo}, mpu={mpu}, status={status}")
+        status = calculate_road_status(piezo, x_g, y_g, z_g)
+        logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, status={status}")
+
+
+        mpu_val_for_db = abs(sqrt(x_g ** 2 + y_g ** 2) - 1.0) * 100.0
 
         if status != "verde":
 
             nearby = find_nearby_point(lat, lon, radius_meters=20)
 
             if nearby:
-                # Update wxisting point
+                # Update existing point
                 nearby.count += 1
                 nearby.piezo = max(nearby.piezo, piezo)  # Worst case
-                nearby.mpu = max(nearby.mpu, mpu)
-                nearby.road_status = calculate_road_status(nearby.piezo, nearby.mpu)
+                nearby.mpu = max(nearby.mpu, mpu_val_for_db)
+                if status == "rossa":
+                    nearby.road_status = "rossa"
+                elif status == "gialla" and nearby.road_status == "verde":
+                    nearby.road_status = "gialla"
                 nearby.timestamp = datetime.utcnow()
 
                 logging.info(f"Punto aggiornato (ID={nearby.id}, count={nearby.count})")
             else:
                 # Create new point
-                sf = Sensorfeed(lat, lon, piezo, mpu, status)
+                sf = Sensorfeed(lat, lon, piezo, mpu_val_for_db, status)
                 db.session.add(sf)
                 logging.info(f"Nuovo punto creato: {status}")
 
