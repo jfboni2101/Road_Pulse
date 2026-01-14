@@ -226,7 +226,6 @@ def upload_data():
         status = calculate_road_status(piezo, x_g, y_g, z_g)
         logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, status={status}")
 
-
         mpu_val_for_db = abs(sqrt(x_g ** 2 + y_g ** 2) - 1.0) * 100.0
 
         if status != "verde":
