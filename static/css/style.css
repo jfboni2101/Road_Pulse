@@ -1,27 +1,39 @@
 /* Layout Generale */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #f7f7f7;
-  text-align: center;
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* Blocca lo scroll della pagina */
+    font-family: Arial, sans-serif;
+    background-color: #f7f7f7;
 }
 
 h1 {
-  color: #222;
-  margin-top: 10px;
+    color: #222;
+    margin-top: 10px;
 }
 
 /* Mappa: l'abbiamo resa Full Width per un look più moderno */
 #map {
-  height: calc(100vh - 70px); /* Altezza dinamica: tutta la pagina meno la navbar */
-  width: 100%;
-  margin: 0;
-  border: none; /* Rimosso il bordo per un effetto "edge-to-edge" */
+    flex-grow: 1;
+    width: 100%;
+    border: none;
+}
+
+/* Container principale che occupa tutto lo schermo */
+.main-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
 /* --- ANIMAZIONI LOGO E NAVBAR --- */
 
 /* Transizione per Logo e Link */
+
+.navbar {
+  flex-shrink: 0; /* Impedisce alla navbar di rimpicciolirsi */
+}
+
 .navbar-brand img,
 .navbar-nav .nav-link {
     transition: transform 0.3s ease, color 0.3s ease;
@@ -46,17 +58,28 @@ h1 {
 
 /* Integrazione per la barra statistiche sopra la mappa */
 .stats-container {
-  background-color: #ffffff;
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
+    flex-shrink: 0; /* Impedisce alla barra stats di rimpicciolirsi */
+    background-color: #ffffff;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
 }
+
+.stat-box {
+    display: flex;
+    flex-direction: column; /* Dispone titolo e numero uno sopra l'altro */
+    justify-content: center; /* Centra verticalmente */
+    align-items: center;     /* Centra orizzontalmente */
+    text-align: center;
+}
+
 .stat-box h6 {
-  font-size: 0.7rem;
-  color: #777;
-  text-transform: uppercase;
-  margin-bottom: 2px;
+    font-size: 0.7rem;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 2px;
 }
+
 .stat-box span {
-  font-size: 1.2rem;
-  font-weight: bold;
+    font-size: 1.2rem;
+    font-weight: bold;
 }
