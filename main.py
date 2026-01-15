@@ -71,7 +71,7 @@ class User(db.Model):
 # Calculating the distance between two coordinates (Haversine)
 def haversine_distance(lat1, lon1, lat2, lon2):
     # Calculate distance in meters between two GPS coordinates
-    R = 6371000  # Earth radius in meters
+    r = 6371000  # Earth radius in meters
 
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
@@ -80,7 +80,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-    return R * c
+    return r * c
 
 
 # Find existing point within specified radius
@@ -117,14 +117,14 @@ def calculate_road_status(piezo_raw, x, y, z, baseline=1.0):
     piezo_val = (piezo_raw / 1023.0) * 100.0  # Normalizzazione piezo
 
     # Soglie delta
-    piezo_high = 65.0
-    piezo_medium = 35.0
-    mpu_high = 70.0
-    mpu_medium = 45.0
+    piezo_high = 30.0
+    piezo_medium = 15.0
+    mpu_high = 1400.0
+    mpu_medium = 1000.0
 
-    if piezo_val > piezo_high or mpu_delta > mpu_high:
+    if piezo_val > piezo_high and mpu_delta > mpu_high:
         return "rossa"
-    elif piezo_val > piezo_medium or mpu_delta > mpu_medium:
+    elif piezo_val > piezo_medium and mpu_delta > mpu_medium:
         return "gialla"
     else:
         return "verde"
@@ -218,13 +218,13 @@ def upload_data():
             return "Formato dati errato", 400
 
         # 1. Conversione in G (come facevamo su Arduino)
-        x_g = ax_raw / 16384.0
-        y_g = ay_raw / 16384.0
-        z_g = az_raw / 16384.0
+        x_g = ax_raw / 2048.0
+        y_g = ay_raw / 2048.0
+        z_g = az_raw / 2048.0
 
         # Calculate color of the point
         status = calculate_road_status(piezo, x_g, y_g, z_g)
-        logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, status={status}")
+        # logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, status={status}")
 
         mpu_val_for_db = abs(sqrt(x_g ** 2 + y_g ** 2) - 1.0) * 100.0
 
@@ -235,12 +235,15 @@ def upload_data():
             if nearby:
                 # Update existing point
                 nearby.count += 1
+
+                nearby.latitude = (nearby.latitude * (nearby.count - 1) + lat) / nearby.count
+                nearby.longitude = (nearby.longitude * (nearby.count - 1) + lon) / nearby.count
+
                 nearby.piezo = max(nearby.piezo, piezo)  # Worst case
                 nearby.mpu = max(nearby.mpu, mpu_val_for_db)
                 if status == "rossa":
                     nearby.road_status = "rossa"
-                elif status == "gialla" and nearby.road_status == "verde":
-                    nearby.road_status = "gialla"
+
                 nearby.timestamp = datetime.utcnow()
 
                 logging.info(f"Punto aggiornato (ID={nearby.id}, count={nearby.count})")
@@ -251,23 +254,6 @@ def upload_data():
                 logging.info(f"Nuovo punto creato: {status}")
 
             db.session.commit()
-
-            # Controlla duplicato
-            # existing = Sensorfeed.query.filter_by(
-            #     latitude=lat, longitude=lon
-            # ).first()
-
-            # if existing:
-                # Salva nel DB
-                # existing.road_status = status
-                # existing.timestamp = datetime.utcnow()
-                # existing.piezo = piezo
-                # existing.mpu = mpu
-            # else:
-                # sf = Sensorfeed(lat, lon, piezo, mpu, status)
-                # db.session.add(sf)
-
-            # db.session.commit()
 
         return f"OK - Stato strada {status}", 200
 
