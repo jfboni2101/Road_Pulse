@@ -60,6 +60,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), default='user')  # 'user' oppure 'admin' (Comune)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -123,21 +124,21 @@ def calculate_road_status(piezo_raw, x, y, z, baseline=1.0):
     mpu_medium = 1000.0
 
     if piezo_val > piezo_high and mpu_delta > mpu_high:
-        return "rossa"
+        return "red"
     elif piezo_val > piezo_medium and mpu_delta > mpu_medium:
-        return "gialla"
+        return "orange"
     else:
-        return "verde"
+        return "green"
 
 
 # Calculate reliability based on number of detections
 def get_confidence(count):
     if count >= 5:
-        return "Alta"
+        return "High"
     elif count >= 2:
-        return "Media"
+        return "Medium"
     else:
-        return "Bassa"
+        return "Low"
 
 
 # Login required in order to do everything
@@ -146,6 +147,17 @@ def login_required(f):
     def wrapper(*args, **kwargs):
         if 'user_id' not in session:
             return redirect('/login')
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user_id = session.get('user_id')
+        user = User.query.get(user_id)
+        if not user or user.role != 'admin':
+            return "Access denied: Only municipalities can perform this operation", 403
         return f(*args, **kwargs)
     return wrapper
 
@@ -160,11 +172,12 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             session['user_id'] = user.id
+            session['user_role'] = user.role
             logging.info(f"Login utente: {username}")
             return redirect('/')
         else:
-            logging.warning(f"Tentativo login fallito: {username}")
-            return render_template('login.html', error="Credenziali errate")
+            logging.warning(f"Login attempt failed: {username}")
+            return render_template('login.html', error="Incorrect credentials")
 
     return render_template('login.html')
 
@@ -180,7 +193,7 @@ def testo_html():
 @app.route('/upload', methods=['POST'])
 def upload_data():
     raw = request.get_data(as_text=True)
-    print("Ricevuto:", raw)
+    print("Received:", raw)
     # return "OK", 200
 
     try:
@@ -189,8 +202,8 @@ def upload_data():
 
         api_key = request.headers.get('X-API-KEY')
         if api_key != UPLOAD_SECRET:
-            logging.warning(f"Tentativo accesso non autorizzato: {request.remote_addr}")
-            return "Accesso negato", 403
+            logging.warning(f"Attempted unauthorized access: {request.remote_addr}")
+            return "Unauthorized access", 403
 
         # Retrieve parameters
         lat_list = params.get("lat", [])
@@ -199,14 +212,14 @@ def upload_data():
 
         # Each single data must be complete
         if not (lat_list and lon_list and dati_list):
-            return "Dati incompleti", 400
+            return "Incomplete data", 400
 
         lat = float(lat_list[0])
         lon = float(lon_list[0])
         dati = dati_list[0]
 
         if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-            return "Coordinate non valide", 400
+            return "Invalid coordinates", 400
 
         try:
             piezo_str, ax_str, ay_str, az_str = dati.split(",")
@@ -215,7 +228,7 @@ def upload_data():
             ay_raw = float(ay_str)
             az_raw = float(az_str)
         except ValueError:
-            return "Formato dati errato", 400
+            return "Incorrect data format", 400
 
         # 1. Conversione in G (come facevamo su Arduino)
         x_g = ax_raw / 2048.0
@@ -228,7 +241,7 @@ def upload_data():
 
         mpu_val_for_db = abs(sqrt(x_g ** 2 + y_g ** 2) - 1.0) * 100.0
 
-        if status != "verde":
+        if status != "green":
 
             nearby = find_nearby_point(lat, lon, radius_meters=20)
 
@@ -241,25 +254,25 @@ def upload_data():
 
                 nearby.piezo = max(nearby.piezo, piezo)  # Worst case
                 nearby.mpu = max(nearby.mpu, mpu_val_for_db)
-                if status == "rossa":
-                    nearby.road_status = "rossa"
+                if status == "red":
+                    nearby.road_status = "red"
 
                 nearby.timestamp = datetime.utcnow()
 
-                logging.info(f"Punto aggiornato (ID={nearby.id}, count={nearby.count})")
+                logging.info(f"Update point (ID={nearby.id}, count={nearby.count})")
             else:
                 # Create new point
                 sf = Sensorfeed(lat, lon, piezo, mpu_val_for_db, status)
                 db.session.add(sf)
-                logging.info(f"Nuovo punto creato: {status}")
+                logging.info(f"New point created: {status}")
 
             db.session.commit()
 
-        return f"OK - Stato strada {status}", 200
+        return f"OK - State of the road {status}", 200
 
     except Exception as e:
-        logging.error(f"Errore upload: {e}")
-        return f"Errore parsing dati: {e}", 400
+        logging.error(f"Upload error: {e}")
+        return f"Data parsing error: {e}", 400
 
 
 # Retrieve critical data recorded in the DB
@@ -285,6 +298,7 @@ def get_road_points():
         age_days = (datetime.utcnow() - point.timestamp).days
 
         points_list.append({
+            'id': point.id,
             'lat': point.latitude,
             'lon': point.longitude,
             'status': point.road_status,
@@ -295,7 +309,7 @@ def get_road_points():
         })
 
     # Return the list as a JSON response
-    logging.info(f"Richiesta roadpoints: {len(points_list)} punti inviati")
+    logging.info(f"Request roadpoints: {len(points_list)} points sent")
     return jsonify(points_list)
 
 
@@ -304,8 +318,8 @@ def get_road_points():
 @login_required
 def get_stats():
     total = Sensorfeed.query.count()
-    red = Sensorfeed.query.filter_by(road_status='rossa').count()
-    yellow = Sensorfeed.query.filter_by(road_status='gialla').count()
+    red = Sensorfeed.query.filter_by(road_status='red').count()
+    yellow = Sensorfeed.query.filter_by(road_status='orange').count()
 
     # Estimate mapped km (1 point per 20m on average)
     estimated_km = (total * 20) / 1000
@@ -323,11 +337,22 @@ def get_stats():
     })
 
 
-# Logout from the website
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/login')
+@app.route('/api/delete-point/<int:point_id>', methods=['POST'])
+@login_required
+def delete_single_point(point_id):
+    user = db.session.get(User, session['user_id'])
+
+    if user.role != 'admin':
+        return jsonify({"status": "error", "message": "Access denied"}), 403
+
+    point = Sensorfeed.query.get(point_id)
+    if point:
+        db.session.delete(point)
+        db.session.commit()
+        logging.info(f"ID point {point_id} deleted by admin {user.username}")
+        return jsonify({"status": "success", "message": "Point removed"})
+
+    return jsonify({"status": "error", "message": "Point not found"}), 404
 
 
 # Delete DB point
@@ -336,8 +361,8 @@ def delete_all():
 
     api_key = request.headers.get('X-API-KEY')
     if api_key != UPLOAD_SECRET:
-        logging.warning(f"Tentativo delete non autorizzato: {request.remote_addr}")
-        return "Accesso negato", 403
+        logging.warning(f"Unauthorized delete attempt: {request.remote_addr}")
+        return "Access denied", 403
 
     count = Sensorfeed.query.count()
     Sensorfeed.query.delete()
@@ -347,8 +372,15 @@ def delete_all():
                             "WHERE name='sensorfeed';"))
     db.session.commit()
 
-    logging.warning(f"Database svuotato: {count} punti eliminati")
+    logging.warning(f"Database emptied: {count} points eliminated")
     return "Deleted", 200
+
+
+# Logout from the website
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
 
 
 # In case of error (incorrect page, etc.)
@@ -363,13 +395,22 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         # Crea un utente di prova solo se non esiste già
+        # 1. Crea UTENTE STANDARD (B2C)
         if not User.query.filter_by(username="Matteo").first():
-            u = User(username="Matteo")
+            u = User(username="Matteo", role="user")
             u.set_password("Boni")
             db.session.add(u)
-            db.session.commit()
-            print(f"Utente {u.username} creato con ID {u.id}")
+            print(f"Standard user {u.username} created.")
 
-    logging.info("Server RoadPulse avviato")
+        # 2. Crea UTENTE COMUNE (B2G / Admin)
+        if not User.query.filter_by(username="admin1234").first():
+            admin = User(username="admin1234", role="admin")
+            admin.set_password("admin1234")
+            db.session.add(admin)
+            print(f"Admin user {admin.username} created.")
+
+        db.session.commit()
+
+    logging.info("RoadPulse Server Started")
     app.run(host=app.config.get('FLASK_RUN_HOST', '127.0.0.1'),
             port=app.config.get('FLASK_RUN_PORT', 2101))

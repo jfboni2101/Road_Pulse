@@ -83,3 +83,96 @@ h1 {
     font-size: 1.2rem;
     font-weight: bold;
 }
+
+/* Posizionamento Legenda sopra la mappa */
+.map-legend {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    z-index: 1000; /* Deve essere maggiore del layer di Leaflet */
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-family: Arial, sans-serif;
+    min-width: 150px;
+}
+/* --- LEGENDA A SCOMPARSA --- */
+
+/* Contenitore che raggruppa bottone e riquadro */
+.legend-wrapper {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    z-index: 1000; /* Sopra la mappa di Leaflet */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Allinea il bottone a destra */
+}
+
+/* Bottone per mostrare/nascondere */
+.legend-toggle {
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 8px; /* Spazio tra bottone e legenda */
+}
+
+.legend-toggle:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Il riquadro della legenda vero e proprio */
+.map-legend {
+    background: rgba(255, 255, 255, 0.95); /* Leggermente trasparente */
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-family: Arial, sans-serif;
+    min-width: 170px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.map-legend h6 {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: center;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    color: #444;
+}
+
+/* Cerchi colorati */
+.dot {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+    border: 1px solid rgba(0,0,0,0.2);
+}
+
+.red { background-color: #ff4d4d; }
+.orange { background-color: #ffa500; }
+.green { background-color: #2ecc71; }
+
+/* Classe di Bootstrap per nascondere (se non inclusa o per sicurezza) */
+.d-none {
+    display: none !important;
+}
