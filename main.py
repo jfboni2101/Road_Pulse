@@ -359,7 +359,7 @@ def delete_single_point(point_id):
 def delete_all():
 
     api_key = request.headers.get('X-API-KEY')
-    if api_key != UPLOAD_SECRET:
+    if api_key != DELETE_SECRET:
         logging.warning(f"Unauthorized delete attempt: {request.remote_addr}")
         return "Access denied", 403
 
