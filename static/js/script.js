@@ -1,7 +1,7 @@
-// Inizializzazione mappa centrata su Modena
-var map = L.map('map').setView([44.7031, 10.6346], 11.5);
+// Initialization of a map centered on Modena
+var map = L.map('map').setView([44.6471, 10.9252], 11.5);
 
-// Layer base OpenStreetMap
+// OpenStreetMap Base Layer
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
@@ -11,20 +11,20 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var roadLayer = L.layerGroup().addTo(map);
 
 
-// Funzione per localizzare l'utente
+// Function to locate the user
 function locateUser() {
-    // Controlla se il browser permette la geolocalizzazione
+    // Check if the browser allows geolocation
   if (navigator.geolocation) {
-      // Chiede all'utente la sua posizione e se può accuisirla ovviamente
+      // Asks the user for his location and whether he can acquire it of course
     navigator.geolocation.getCurrentPosition(
       function(position) {
         var lat = position.coords.latitude;
         var lon = position.coords.longitude;
 
-        // Centra la mappa sulla posizione dell'utente
+        // Center the map on the user's location
         map.setView([lat, lon], 13);
 
-        // Aggiungi un marker per l'utente
+        // Add a marker for the user
         L.marker([lat, lon]).addTo(map)
           .bindPopup("You are here!")
           .openPopup();
@@ -39,13 +39,13 @@ function locateUser() {
 }
 
 
-// Chiamata alla funzione di geolocalizzazione
+// Call the geolocation function
 locateUser();
 
 
 function toggleLegend() {
     const legend = document.getElementById('map-legend');
-    // toggle della classe 'd-none' di Bootstrap (display: none)
+    // Bootstrap 'd-none' class toggle (display: none)
     if (legend.classList.contains('d-none')) {
         legend.classList.remove('d-none');
     } else {
@@ -54,21 +54,21 @@ function toggleLegend() {
 }
 
 
-// Funzione globale per l'eliminazione
+// Global function for deletion
 function deletePoint(pointId) {
     if (confirm("Do you confirm that the repair has been made? The point will be removed from the map.")) {
         fetch(`/api/delete-point/${pointId}`, { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    alert("Intervento registrato con successo!");
-                    update_road_points(); // Ricarica i punti senza refresh pagina
-                    update_stats();       // Aggiorna i contatori
+                    alert("Intervention recorded successfully!!");
+                    update_road_points(); // Reload points without page refresh
+                    update_stats();       // Update counters
                 } else {
-                    alert("Errore: " + data.message);
+                    alert("Error: " + data.message);
                 }
             })
-            .catch(err => alert("Errore durante la comunicazione con il server."));
+            .catch(err => alert("Error communicating with the server."));
     }
 }
 
@@ -77,7 +77,7 @@ function update_stats() {
     fetch('/api/stats')
         .then(response => response.json())
         .then(stats => {
-            // Inserisce i valori dal JSON agli elementi HTML
+            // Inserts values from JSON into HTML elements
             document.getElementById('total-points').innerText = stats.total_points;
             document.getElementById('red-count').innerText = stats.red_count;
             document.getElementById('km-mapped').innerText = stats.estimated_km + " km";
@@ -86,7 +86,7 @@ function update_stats() {
 }
 
 
-// caricamento dati DB
+// DB data loading
 function update_road_points() {
     fetch('/api/roadpoints')
         .then(response => response.json())
@@ -101,13 +101,13 @@ function update_road_points() {
                 }
 
                 let marker = L.circleMarker([point.lat, point.lon], {
-                    radius: 7, // Leggermente più grande per facilitare il click
+                    radius: 7, // Slightly larger to make clicking easier
                     color: color,
                     fillColor: color,
                     fillOpacity: 0.8
                 }).addTo(roadLayer);
 
-                // COSTRUZIONE POPUP DINAMICO
+                // Dynamic popup construction
                 let popupContent = `
                     <div style="text-align: center;">
                         <b>Status:</b> ${point.status.toUpperCase()}<br>
@@ -116,13 +116,13 @@ function update_road_points() {
                     </div>
                 `;
 
-                // SE ADMIN, AGGIUNGI TASTO ELIMINA
+                // If Admin, add delete button
                 if (typeof userRole !== 'undefined' && userRole === 'admin') {
                     popupContent += `
                         <hr>
                         <button onclick="deletePoint(${point.id})" 
                                 style="background:#dc3545; color:white; border:none; border-radius:4px; padding:5px 10px; width:100%; cursor:pointer;">
-                            Segna come Riparato
+                            Mark as Repaired
                         </button>
                     `;
                 }

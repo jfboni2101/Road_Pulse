@@ -43,7 +43,7 @@ class Sensorfeed(db.Model):
     piezo = db.Column(db.Float)
     mpu = db.Column(db.Float)
     road_status = db.Column(db.String(10))
-    count = db.Column(db.Integer, default=1)  # Numero rilevamenti
+    count = db.Column(db.Integer, default=1)  # Number of detections
     timestamp = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
     def __init__(self, lat, lon, piezo, mpu, status):
@@ -86,11 +86,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 # Find existing point within specified radius
 def find_nearby_point(lat, lon, radius_meters=20):
-    # 1 grado lat ≈ 111km, 1 grado lon ≈ 111km*cos(lat)
-    # radius_meters = 20m = 0.00018 gradi circa
+    # 1 degree lat ≈ 111km, 1 degree lon ≈ 111km*cos(lat)
+    # radius_meters = 20m = 0.00018 approximately
     delta_deg = radius_meters / 111000.0 * 1.5  # Safety margin
 
-    # Query solo punti nel bounding box (MOLTO più veloce)
+    # Query only points in the bounding box (MUCH faster)
     nearby_candidates = Sensorfeed.query.filter(
         Sensorfeed.latitude.between(lat - delta_deg, lat + delta_deg),
         Sensorfeed.longitude.between(lon - delta_deg, lon + delta_deg)
@@ -107,17 +107,17 @@ def find_nearby_point(lat, lon, radius_meters=20):
 # State of the road calculation
 def calculate_road_status(piezo_raw, x, y, z, baseline=1.0):
 
-    # 1. Calcolo del Modulo (Indipendenza dalla piega)
-    # Usiamo x e y per ignorare accelerazione/frenata, o tutti e tre per precisione totale
+    # Calculating Modulus (Fold Independence)
+    # We use x and y to ignore acceleration/braking, or all three for total accuracy
     modulo = sqrt(x ** 2 + y ** 2)
 
-    # 2. Calcolo del Delta (Urto)
+    # Calculation of the Delta
     mpu_delta = abs(modulo - baseline) * 100.0
 
-    # 3. Soglie (Ora puoi cambiarle qui senza ricaricare il codice su Arduino!)
-    piezo_val = (piezo_raw / 1023.0) * 100.0  # Normalizzazione piezo
+    # Piezo normalization
+    piezo_val = (piezo_raw / 1023.0) * 100.0
 
-    # Soglie delta
+    # # Thresholds
     piezo_high = 30.0
     piezo_medium = 15.0
     mpu_high = 1400.0
@@ -173,7 +173,7 @@ def login():
         if user and user.check_password(password):
             session['user_id'] = user.id
             session['user_role'] = user.role
-            logging.info(f"Login utente: {username}")
+            logging.info(f"User Login: {username}")
             return redirect('/')
         else:
             logging.warning(f"Login attempt failed: {username}")
@@ -230,14 +230,13 @@ def upload_data():
         except ValueError:
             return "Incorrect data format", 400
 
-        # 1. Conversione in G (come facevamo su Arduino)
+        # Conversion to G
         x_g = ax_raw / 2048.0
         y_g = ay_raw / 2048.0
         z_g = az_raw / 2048.0
 
         # Calculate color of the point
         status = calculate_road_status(piezo, x_g, y_g, z_g)
-        # logging.info(f"Rilevamento: lat={lat:.6f}, lon={lon:.6f}, status={status}")
 
         mpu_val_for_db = abs(sqrt(x_g ** 2 + y_g ** 2) - 1.0) * 100.0
 
@@ -279,8 +278,8 @@ def upload_data():
 @app.route('/api/roadpoints', methods=['GET'])
 @login_required
 def get_road_points():
-    # Interroga il database per tutti i punti registrati
-    # Ordiniamo per ID in modo che i più recenti siano in cima (opzionale)
+    # Query the database for all registered points
+    # We sort by ID so that the most recent ones are at the top
     # all_points = db.session.execute(db.select(Sensorfeed)).scalars().all()
 
     # Parametro opzionale: days (default 30)
@@ -313,13 +312,13 @@ def get_road_points():
     return jsonify(points_list)
 
 
-# API: System statistic
+# System statistic
 @app.route('/api/stats', methods=['GET'])
 @login_required
 def get_stats():
     total = Sensorfeed.query.count()
     red = Sensorfeed.query.filter_by(road_status='red').count()
-    yellow = Sensorfeed.query.filter_by(road_status='orange').count()
+    orange = Sensorfeed.query.filter_by(road_status='orange').count()
 
     # Estimate mapped km (1 point per 20m on average)
     estimated_km = (total * 20) / 1000
@@ -331,7 +330,7 @@ def get_stats():
     return jsonify({
         'total_points': total,
         'red_count': red,
-        'yellow_count': yellow,
+        'orange_count': orange,
         'estimated_km': round(estimated_km, 1),
         'last_update': last_update
     })
@@ -372,7 +371,7 @@ def delete_all():
                             "WHERE name='sensorfeed';"))
     db.session.commit()
 
-    logging.warning(f"Database emptied: {count} points eliminated")
+    logging.warning(f"Database cleared: {count} points deleted")
     return "Deleted", 200
 
 
@@ -394,15 +393,15 @@ if __name__ == '__main__':
 
     with app.app_context():
         db.create_all()
-        # Crea un utente di prova solo se non esiste già
-        # 1. Crea UTENTE STANDARD (B2C)
+        # Create a test user only if it doesn't already exist
+        # Create STANDARD USER (B2C)
         if not User.query.filter_by(username="Matteo").first():
             u = User(username="Matteo", role="user")
             u.set_password("Boni")
             db.session.add(u)
             print(f"Standard user {u.username} created.")
 
-        # 2. Crea UTENTE COMUNE (B2G / Admin)
+        # 2. Create MUNICIPALITY USER (B2G / Admin)
         if not User.query.filter_by(username="admin1234").first():
             admin = User(username="admin1234", role="admin")
             admin.set_password("admin1234")
