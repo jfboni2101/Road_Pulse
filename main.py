@@ -1,3 +1,8 @@
+# Creator: Boni Matteo
+# University: Università degli Studi di Modena e Reggio Emilia - UNIMORE
+# Course: Artificial Intelligence Engineering
+# Subject: IOT and 3D Intelligent Systems
+
 from flask import session, redirect, url_for, render_template, request, jsonify, Flask
 from config import Config
 from flask_sqlalchemy import SQLAlchemy
