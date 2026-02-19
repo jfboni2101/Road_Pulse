@@ -30,7 +30,7 @@ info = Info(title=appname, version="1.0.0")
 app = OpenAPI(appname, info=info)
 myconfig = Config
 app.config.from_object(myconfig)
-app.secret_key = "passwordDiProvaPerVedereSeFunzionaTutto"
+app.secret_key = app.config["SECRET_KEY"]
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 UPLOAD_SECRET = app.config["UPLOAD_SECRET"]
 DELETE_SECRET = app.config["DELETE_SECRET"]
@@ -160,7 +160,7 @@ def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         user_id = session.get('user_id')
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user or user.role != 'admin':
             return "Access denied: Only municipalities can perform this operation", 403
         return f(*args, **kwargs)
@@ -343,13 +343,11 @@ def get_stats():
 
 @app.route('/api/delete-point/<int:point_id>', methods=['POST'])
 @login_required
+@admin_required
 def delete_single_point(point_id):
     user = db.session.get(User, session['user_id'])
 
-    if user.role != 'admin':
-        return jsonify({"status": "error", "message": "Access denied"}), 403
-
-    point = Sensorfeed.query.get(point_id)
+    point = db.session.get(Sensorfeed, point_id)
     if point:
         db.session.delete(point)
         db.session.commit()
@@ -400,16 +398,16 @@ if __name__ == '__main__':
         db.create_all()
         # Create a test user only if it doesn't already exist
         # Create STANDARD USER (B2C)
-        if not User.query.filter_by(username="Matteo").first():
-            u = User(username="Matteo", role="user")
-            u.set_password("Boni")
+        if not User.query.filter_by(username="user").first():
+            u = User(username="user", role="user")
+            u.set_password("user")
             db.session.add(u)
             print(f"Standard user {u.username} created.")
 
         # 2. Create MUNICIPALITY USER (B2G / Admin)
-        if not User.query.filter_by(username="admin1234").first():
-            admin = User(username="admin1234", role="admin")
-            admin.set_password("admin1234")
+        if not User.query.filter_by(username="admin").first():
+            admin = User(username="admin", role="admin")
+            admin.set_password("admin")
             db.session.add(admin)
             print(f"Admin user {admin.username} created.")
 
