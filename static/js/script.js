@@ -112,7 +112,7 @@ function update_road_points() {
                     <div style="text-align: center;">
                         <b>Status:</b> ${point.status.toUpperCase()}<br>
                         <b>Reliability:</b> ${point.confidence}<br>
-                        <small>${new Date(point.timestamp).toLocaleString()}</small>
+                        <small>${new Date(point.timestamp).toLocaleDateString()}</small>
                     </div>
                 `;
 

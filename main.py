@@ -292,9 +292,7 @@ def get_road_points():
 
     # Only recent points
     cutoff = datetime.utcnow() - timedelta(days=days)
-    recent_points = Sensorfeed.query.filter(
-        Sensorfeed.timestamp >= cutoff
-    ).all()
+    recent_points = Sensorfeed.query.all()
 
     # Format data in a list of JSON dictionaries
     points_list = []
